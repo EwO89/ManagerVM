@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from src.db.main import init_db
+from src.main import router as websocket_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,5 +18,4 @@ app = FastAPI(
     description="Manager VM service",
     lifespan=lifespan,
 )
-
-
+app.include_router(websocket_router)
