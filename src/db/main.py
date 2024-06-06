@@ -29,7 +29,6 @@ async def create_tables():
     async with pool.acquire() as connection:
         await connection.execute(sql_script)
 
-    
     executed_script_path = os.path.join(os.path.dirname(__file__), 'executed_tables.sql')
     with open(executed_script_path, 'w') as file:
         file.write(sql_script)
