@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from src.db.main import init_db
-from src.main import router as websocket_router
+from src.websocket.app import router as websocket_router
 
 
 @asynccontextmanager
