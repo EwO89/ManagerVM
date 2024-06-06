@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from src.websocket.vm_client import VMClient
 from src.websocket import websocket_server
 from src.websocket.app import router as websocket_router
+from src.config import settings
 
 
 @pytest.fixture
@@ -21,7 +22,7 @@ def client(app):
 
 @pytest.mark.asyncio
 async def test_vm_client(client):
-    server_uri = "ws://localhost:9000/ws/vm123"
+    server_uri = f"ws://{settings.WS_HOST}:{settings.WS_PORT}/ws/vm123"
 
     async def run_server():
         async with client.websocket_connect(server_uri) as websocket:
@@ -36,8 +37,7 @@ async def test_vm_client(client):
 
     server_task = asyncio.create_task(run_server())
 
-    client_uri = "ws://localhost:9000/ws/vm123"
-    vm_client = VMClient(client_uri, "vm123")
+    vm_client = VMClient(server_uri, "vm123")
 
     await vm_client.connect()
     await vm_client.send_message("Hello from VMClient")
