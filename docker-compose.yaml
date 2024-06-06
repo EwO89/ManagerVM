@@ -1,0 +1,28 @@
+version:
+
+services:
+  app:
+    container_name: vm_app
+    build: ./
+    depends_on:
+      - db
+    command: bash -c 'while !</dev/tcp/postgres/5432; do sleep 1; done; uvicorn app.main:app --host 127.0.0.1 --port 9000'
+    volumes:
+      - ./src:/src/src
+    ports:
+      - ${APP_HOST_PORT}:9000
+    restart: always
+    env_file:
+      - .env
+  db:
+    container_name: vm_app_postgres
+    image: postgres
+    environment:
+      - POSTGRES_DB=database
+      - POSTGRES_USER=${POSTGRES_DB_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_DB_PASSWORD}
+    ports:
+      - ${POSTGRES_DB_HOST_PORT}:5432
+    volumes:
+      - .postgres:/var/lib/postgres/data
+    restart: always
