@@ -17,5 +17,5 @@ class Settings(BaseSettings):
         extra = 'ignore'
 
 
-# Создаем экземпляр настроек
+
 settings = Settings(_env_file=os.getenv("ENV_FILE", ".env"))
