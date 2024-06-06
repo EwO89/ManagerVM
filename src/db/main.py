@@ -7,12 +7,6 @@ async def create_pool():
     return await asyncpg.create_pool(settings.POSTGRES_URL)
 
 
-async def read_sql_script(file_path):
-    with open(file_path, 'r') as file:
-        sql_script = file.read()
-    return sql_script
-
-
 async def init_db():
     pool = await create_pool()
 
@@ -21,9 +15,15 @@ async def init_db():
         print(result)
 
 
+async def read_sql_script(file_path):
+    with open(file_path, 'r') as file:
+        sql_script = file.read()
+    return sql_script
+
+
 async def create_tables():
     pool = await create_pool()
-    script_path = os.path.join(os.path.dirname(__file__), 'create_tables.sql')
+    script_path = os.path.join(os.path.dirname(__file__), 'sql', 'create_tables.sql')
     sql_script = await read_sql_script(script_path)
 
     async with pool.acquire() as connection:
