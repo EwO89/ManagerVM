@@ -1,7 +1,9 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from datetime import datetime
 
+
+# Схемы для виртуальных машин
 
 class VirtualMachineCreate(BaseModel):
     name: str
@@ -19,12 +21,33 @@ class VirtualMachine(BaseModel):
     created_at: datetime
 
 
-class CreateUser(BaseModel):
-    model_config = ConfigDict(strict=True)
-    username: str
-    password: bytes
-    email: EmailStr | None = None
-    active: bool = True
+
+
+class VMDiskCreate(BaseModel):
+    vm_id: int
+    disk_size: int
+
+
+class VMDisk(BaseModel):
+    disk_id: int
+    vm_id: int
+    disk_size: int
+
+
+
+
+class WSConnectionHistoryCreate(BaseModel):
+    vm_id: int
+    connected_at: datetime
+
+
+class WSConnectionHistory(BaseModel):
+    id: int
+    vm_id: int
+    connected_at: datetime
+    disconnected_at: Optional[datetime] = None
+
+
 
 
 class TokenInfo(BaseModel):
