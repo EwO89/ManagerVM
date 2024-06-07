@@ -1,14 +1,15 @@
 from typing import List, Dict
 from fastapi import WebSocket, WebSocketDisconnect, HTTPException, status
 from datetime import datetime
-from src.db.main import create_pool
+from src.db.connection_history import ConnectionHistoryDao
 from auth.utils import decode_jwt
-
+from src.db.main import create_pool
 
 class WebSocketServer:
     def __init__(self):
         self.active_connections: List[Dict] = []
         self.all_connections: List[Dict] = []
+        self.connection_history_dao = ConnectionHistoryDao()
 
     async def register(self, websocket: WebSocket, vm_id: str):
         await websocket.accept()
@@ -23,7 +24,7 @@ class WebSocketServer:
         }
         self.active_connections.append(connection_info)
         self.all_connections.append(connection_info)
-        await self.save_connection_info(vm_data["vm_id"])
+        await self.connection_history_dao.create(vm_data["vm_id"])
 
     async def disconnect(self, websocket: WebSocket):
         for conn in self.active_connections:
@@ -52,14 +53,6 @@ class WebSocketServer:
                 FROM virtual_machine
             ''')
             return [dict(vm) for vm in vms]
-
-    async def save_connection_info(self, vm_id: int):
-        pool = await create_pool()
-        async with pool.acquire() as connection:
-            await connection.execute('''
-                INSERT INTO ws_connection_history (vm_id, connected_at)
-                VALUES ($1, $2)
-            ''', vm_id, datetime.utcnow())
 
     async def send_message(self, websocket: WebSocket, message: str):
         await websocket.send_text(message)
@@ -104,8 +97,14 @@ class WebSocketServer:
         await self.send_message(websocket, {"all_vms": all_vms})
 
     async def get_all_connected_vms(self, websocket: WebSocket):
-        all_connected_vms = [
-            {k: v for k, v in conn.items() if k in ["vm_id", "name", "ram", "cpu", "connected_at"]}
-            for conn in self.all_connections
-        ]
+        all_connected_vms = await self.connection_history_dao.get_all_distinct()
         await self.send_message(websocket, {"all_connected_vms": all_connected_vms})
+
+    async def update_vm_data(self, vm_id: str, name: str, ram: int, cpu: int):
+        pool = await create_pool()
+        async with pool.acquire() as connection:
+            await connection.execute('''
+                UPDATE virtual_machine
+                SET name = $2, ram = $3, cpu = $4
+                WHERE vm_id = $1
+            ''', vm_id, name, ram, cpu)
