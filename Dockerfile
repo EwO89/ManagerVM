@@ -10,3 +10,5 @@ COPY requirements.txt requiremnts.txt
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY ./src /src
+COPY ./runserver.py /src
+COPY ./.env /src/.env
