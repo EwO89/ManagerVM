@@ -8,6 +8,8 @@ class VMClient:
         self.uri = uri
         self.vm_id = vm_id
         self.websocket = None
+        self.token = None
+        self.public_key = None
 
     async def connect(self):
         self.websocket = await websockets.connect(self.uri)
