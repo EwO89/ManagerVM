@@ -2,7 +2,7 @@ import os
 from pydantic import BaseSettings, BaseModel
 from pathlib import Path
 
-# Глобальная переменная BASE_DIR
+
 BASE_DIR = Path(__file__).absolute().parent
 
 
