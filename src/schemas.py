@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, EmailStr
 from typing import Optional
 from datetime import datetime
 
@@ -17,3 +17,6 @@ class VirtualMachine(BaseModel):
     cpu: int
     description: Optional[str] = None
     created_at: datetime
+
+
+
