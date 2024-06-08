@@ -2,8 +2,10 @@ import asyncio
 import websockets
 from auth.utils import encode_jwt, decode_jwt
 from src.config import settings
-from schemas import VirtualMachineCreate, VirtualMachine, VMDiskCreate, VMDisk, WSConnectionHistoryCreate, WSConnectionHistory, TokenInfo
+from schemas import VirtualMachineCreate, VirtualMachine, VMDiskCreate, VMDisk, WSConnectionHistoryCreate, \
+    WSConnectionHistory, TokenInfo
 from datetime import datetime
+
 
 class VirtualMachineServer:
     def __init__(self):
@@ -12,11 +14,11 @@ class VirtualMachineServer:
     async def connect_to_client(self, vm: VirtualMachine):
         try:
             async with websockets.connect(vm.uri) as websocket:
-                # Этап подключения
+
                 print(f"Connected to {vm.vm_id}")
                 vm.is_connected = True
 
-                # Отправляем запрос на авторизацию
+
                 await self.request_authorization(websocket, vm)
         except Exception as e:
             print(f"Failed to connect to {vm.uri}: {e}")
@@ -42,7 +44,7 @@ class VirtualMachineServer:
             while True:
                 message = await websocket.recv()
                 print(f"Received message from {vm.vm_id}: {message}")
-                # Обработка сообщений от клиента
+
         except websockets.exceptions.ConnectionClosed:
             print(f"Connection closed for {vm.vm_id}")
             vm.is_connected = False
@@ -64,7 +66,7 @@ class VirtualMachineServer:
         return disks
 
     async def run(self):
-        # Создание примеров виртуальных машин
+
         vm1 = VirtualMachine(
             vm_id=1,
             name="VM1",
@@ -98,6 +100,7 @@ class VirtualMachineServer:
         }
 
         await asyncio.gather(*[self.connect_to_client(vm) for vm in self.virtual_machines.values()])
+
 
 if __name__ == "__main__":
     server = VirtualMachineServer()
