@@ -5,21 +5,19 @@ from src.config import settings
 from src.schemas import VirtualMachine, WSConnectionHistoryCreate, VirtualMachineCreate, VMDiskCreate
 from datetime import datetime
 from src.db.dao.virtual_machine import VirtualMachineDAO
-from src.db.main import create_pool
+from src.db.dao.connection_history import ConnectionHistoryDao
 
 
 class WebsocketServer:
-    def __init__(self, pool):
-        self.virtual_machine = VirtualMachineDAO(pool)
-        self.connection_history = []
+    def __init__(self, virtual_machine_dao: VirtualMachineDAO, connection_history_dao: ConnectionHistoryDao):
+        self.virtual_machine = virtual_machine_dao
+        self.connection_history = connection_history_dao
 
     async def connect_to_client(self, vm: VirtualMachine):
         try:
             async with websockets.connect(vm.uri) as websocket:
                 print(f"Connected to {vm.vm_id}")
-                vm.is_connected = True
-                self.connection_history.append(
-                    WSConnectionHistoryCreate(vm_id=vm.vm_id, connected_at=datetime.utcnow()))
+                await self.connection_history.create(vm.vm_id)
 
                 await self.request_authorization(websocket, vm)
         except Exception as e:
@@ -34,7 +32,6 @@ class WebsocketServer:
             response = await websocket.recv()
             if response == "authenticated":
                 print(f"Authenticated with {vm.vm_id}")
-                vm.is_authenticated = True
                 await self.handle_client(websocket, vm)
             else:
                 print(f"Failed to authenticate with {vm.vm_id}")
@@ -49,9 +46,7 @@ class WebsocketServer:
 
         except websockets.exceptions.ConnectionClosed:
             print(f"Connection closed for {vm.vm_id}")
-            vm.is_connected = False
-            vm.is_authenticated = False
-            self.connection_history[-1].disconnected_at = datetime.utcnow()
+            await self.connection_history.close_connection(vm.vm_id)
 
     async def list_connected_clients(self):
         vms = await self.virtual_machine.list_vms()
@@ -72,7 +67,7 @@ class WebsocketServer:
         return disks
 
     async def list_all_connections(self):
-        return [history.dict() for history in self.connection_history]
+        return await self.connection_history.get_all()
 
     async def disconnect_client(self, vm_id: int):
         vm = await self.virtual_machine.get_vm(vm_id)
@@ -85,9 +80,7 @@ class WebsocketServer:
         except Exception as e:
             print(f"Error closing connection for {vm.vm_id}: {e}")
         finally:
-            vm.is_connected = False
-            vm.is_authenticated = False
-            self.connection_history[-1].disconnected_at = datetime.utcnow()
+            await self.connection_history.close_connection(vm.vm_id)
 
     async def update_vm(self, vm_id: int, ram: int = None, cpu: int = None, description: str = None):
         vm = await self.virtual_machine.get_vm(vm_id)

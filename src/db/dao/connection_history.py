@@ -36,3 +36,6 @@ class ConnectionHistoryDao(BaseDAO):
                 ORDER BY connected_at
             ''')
             return [dict(row) for row in rows]
+
+    async def close_connection(self, vm_id):
+        pass
