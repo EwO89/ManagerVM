@@ -6,7 +6,7 @@ from src.schemas import VirtualMachine, VMDisk, WSConnectionHistoryCreate
 from datetime import datetime
 
 
-class VirtualMachineServer:
+class WebsocketServer:
     def __init__(self):
         self.virtual_machines = {}
         self.connection_history = []

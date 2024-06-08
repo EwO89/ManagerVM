@@ -1,3 +1,3 @@
-from .server import VirtualMachineServer
+from .server import WebsocketServer
 
-websocket_server = VirtualMachineServer
+websocket_server = WebsocketServer()
