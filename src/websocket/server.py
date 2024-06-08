@@ -4,20 +4,14 @@ from src.auth.utils import encode_jwt
 from src.config import settings
 from src.schemas import VirtualMachine, WSConnectionHistoryCreate, VirtualMachineCreate, VMDiskCreate
 from datetime import datetime
-from src.db.virtual_machine_DAO import VirtualMachineDAO
+from src.db.dao.virtual_machine_DAO import VirtualMachineDAO
+from src.db.main import create_pool
 
 
 class WebsocketServer:
-    def __init__(self, dsn: str):
-        self.virtual_machine_dao = VirtualMachineDAO(dsn)
+    def __init__(self, pool):
+        self.virtual_machine_dao = VirtualMachineDAO(pool)
         self.connection_history = []
-
-    async def start(self):
-        await self.virtual_machine_dao.connect()
-        await self.virtual_machine_dao.create_tables()
-
-    async def stop(self):
-        await self.virtual_machine_dao.close()
 
     async def connect_to_client(self, vm: VirtualMachine):
         try:
@@ -59,22 +53,25 @@ class WebsocketServer:
             vm.is_authenticated = False
             self.connection_history[-1].disconnected_at = datetime.utcnow()
 
-    def list_connected_clients(self):
-        return [vm.dict() for vm in self.virtual_machine_dao.list_vms() if vm.is_connected]
+    async def list_connected_clients(self):
+        vms = await self.virtual_machine_dao.list_vms()
+        return [vm.dict() for vm in vms if vm.is_connected]
 
-    def list_authorized_clients(self):
-        return [vm.dict() for vm in self.virtual_machine_dao.list_vms() if vm.is_authenticated]
+    async def list_authorized_clients(self):
+        vms = await self.virtual_machine_dao.list_vms()
+        return [vm.dict() for vm in vms if vm.is_authenticated]
 
-    def list_all_disks(self):
+    async def list_all_disks(self):
+        vms = await self.virtual_machine_dao.list_vms()
         disks = []
-        for vm in self.virtual_machine_dao.list_vms():
+        for vm in vms:
             for disk in vm.hard_disks:
                 disk_info = disk.dict()
                 disk_info['vm_name'] = vm.name
                 disks.append(disk_info)
         return disks
 
-    def list_all_connections(self):
+    async def list_all_connections(self):
         return [history.dict() for history in self.connection_history]
 
     async def disconnect_client(self, vm_id: int):
