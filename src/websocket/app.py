@@ -1,13 +1,8 @@
-# src/websocket/app.py
-
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from src.websocket.server import VirtualMachineServer
-from src.schemas import VirtualMachine, VMDisk
-from datetime import datetime
 
 router = APIRouter()
 
-# Создаем экземпляр VirtualMachineServer
 vm_server = VirtualMachineServer()
 
 
