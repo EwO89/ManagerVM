@@ -1,1 +1,15 @@
 # ManagerVM
+
+**Запуск**:
+
+- `git clone https://github.com/EwO89/ManagerVM.git` - клонирование репозитория
+- `python -m venv venv` - создание виртуального окружения
+- `source venv/bin/activate` - активация виртуального окружения
+-  НА Windows: `venv/Scripts/activate`
+-  переименование .env.sample в .env
+- `make r` - скачивание requirements
+- `make docker-up` - запуск postgres в докере
+- `make start` - запуск приложения
+
+***Тесты***:
+- `make test` - запуск тестов
