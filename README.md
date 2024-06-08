@@ -1,5 +1,10 @@
 # ManagerVM
 
+**Зависимости**:
+- Python 3.12
+- Docker
+- Makefile (`sudo apt install make`)
+
 **Запуск**:
 
 - `git clone https://github.com/EwO89/ManagerVM.git` - клонирование репозитория
