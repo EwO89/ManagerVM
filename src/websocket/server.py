@@ -1,53 +1,104 @@
-from typing import List, Dict
-from fastapi import WebSocket, WebSocketDisconnect
+import asyncio
+import websockets
+from auth.utils import encode_jwt, decode_jwt
+from src.config import settings
+from schemas import VirtualMachineCreate, VirtualMachine, VMDiskCreate, VMDisk, WSConnectionHistoryCreate, WSConnectionHistory, TokenInfo
 from datetime import datetime
-from src.db.main import create_pool
 
-
-class WebSocketServer:
+class VirtualMachineServer:
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
-        self.all_connections: List[Dict] = []
+        self.virtual_machines = {}
 
-    async def register(self, websocket: WebSocket, vm_id: str):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-        connection_info = {
-            "vm_id": vm_id,
-            "websocket": websocket,
-            "connected_at": datetime.utcnow()
+    async def connect_to_client(self, vm: VirtualMachine):
+        try:
+            async with websockets.connect(vm.uri) as websocket:
+                # Этап подключения
+                print(f"Connected to {vm.vm_id}")
+                vm.is_connected = True
+
+                # Отправляем запрос на авторизацию
+                await self.request_authorization(websocket, vm)
+        except Exception as e:
+            print(f"Failed to connect to {vm.uri}: {e}")
+
+    async def request_authorization(self, websocket, vm: VirtualMachine):
+        try:
+            token = encode_jwt({"vm_id": vm.vm_id})
+            await websocket.send(token)
+            await websocket.send(settings.auth_jwt.public_key_path.read_text())
+
+            response = await websocket.recv()
+            if response == "authenticated":
+                print(f"Authenticated with {vm.vm_id}")
+                vm.is_authenticated = True
+                await self.handle_client(websocket, vm)
+            else:
+                print(f"Failed to authenticate with {vm.vm_id}")
+        except Exception as e:
+            print(f"Authorization error with {vm.vm_id}: {e}")
+
+    async def handle_client(self, websocket, vm: VirtualMachine):
+        try:
+            while True:
+                message = await websocket.recv()
+                print(f"Received message from {vm.vm_id}: {message}")
+                # Обработка сообщений от клиента
+        except websockets.exceptions.ConnectionClosed:
+            print(f"Connection closed for {vm.vm_id}")
+            vm.is_connected = False
+            vm.is_authenticated = False
+
+    def list_connected_clients(self):
+        return [vm.dict() for vm in self.virtual_machines.values() if vm.is_connected]
+
+    def list_authorized_clients(self):
+        return [vm.dict() for vm in self.virtual_machines.values() if vm.is_authenticated]
+
+    def list_all_disks(self):
+        disks = []
+        for vm in self.virtual_machines.values():
+            for disk in vm.hard_disks:
+                disk_info = disk.dict()
+                disk_info['vm_name'] = vm.name
+                disks.append(disk_info)
+        return disks
+
+    async def run(self):
+        # Создание примеров виртуальных машин
+        vm1 = VirtualMachine(
+            vm_id=1,
+            name="VM1",
+            ram=2048,
+            cpu=2,
+            description="Test VM 1",
+            uri="ws://localhost:8765",
+            created_at=datetime.utcnow(),
+            hard_disks=[
+                VMDisk(disk_id=1, vm_id=1, disk_size=500),
+                VMDisk(disk_id=2, vm_id=1, disk_size=1000)
+            ]
+        )
+
+        vm2 = VirtualMachine(
+            vm_id=2,
+            name="VM2",
+            ram=4096,
+            cpu=4,
+            description="Test VM 2",
+            uri="ws://localhost:8766",
+            created_at=datetime.utcnow(),
+            hard_disks=[
+                VMDisk(disk_id=3, vm_id=2, disk_size=2000)
+            ]
+        )
+
+        self.virtual_machines = {
+            vm1.vm_id: vm1,
+            vm2.vm_id: vm2
         }
-        self.all_connections.append(connection_info)
-        await self.save_connection_info(vm_id)
 
-    async def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-        for conn in self.all_connections:
-            if conn["websocket"] == websocket:
-                conn["disconnected_at"] = datetime.utcnow()
-                break
+        await asyncio.gather(*[self.connect_to_client(vm) for vm in self.virtual_machines.values()])
 
-    @property
-    def active_connections_list(self):
-        return [{"vm_id": conn["vm_id"], "connected_at": conn["connected_at"]} for conn in self.all_connections if
-                conn.get("disconnected_at") is None]
-
-    @property
-    def authorized_connections_list(self):
-        return self.active_connections_list
-
-    @property
-    def all_connections_list(self):
-        return self.all_connections
-
-    async def save_connection_info(self, vm_id: str):
-        pool = await create_pool()
-        async with pool.acquire() as connection:
-            await connection.execute('''
-                INSERT INTO ws_connection_history (vm_id, connected_at)
-                VALUES ($1, $2)
-            ''', vm_id, datetime.utcnow())
-
-    async def send_message(self, message: str):
-        for connection in self.active_connections:
-            await connection.send_text(message)
+if __name__ == "__main__":
+    server = VirtualMachineServer()
+    asyncio.run(server.run())

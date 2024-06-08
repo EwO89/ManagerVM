@@ -1,33 +1,39 @@
 import asyncio
 import websockets
-import json
+from auth.utils import decode_jwt
+import jwt
 
 
-class VMClient:
-    def __init__(self, uri: str, vm_id: str):
-        self.uri = uri
-        self.vm_id = vm_id
-        self.websocket = None
-        self.token = None
-        self.public_key = None
+async def handle_connection(websocket, path):
+    try:
+        token = await websocket.recv()
+        public_key = await websocket.recv()
 
-    async def connect(self):
-        self.websocket = await websockets.connect(self.uri)
-        await self.authorize()
+        vm_id = None
+        try:
+            payload = decode_jwt(token, public_key=public_key)
+            vm_id = payload["vm_id"]
+        except jwt.ExpiredSignatureError:
+            await websocket.send("unauthorized")
+        except jwt.InvalidTokenError:
+            await websocket.send("unauthorized")
 
-    async def authorize(self):
-        if self.websocket:
-            auth_message = json.dumps({"action": "authorize", "vm_id": self.vm_id})
-            await self.websocket.send(auth_message)
-            response = await self.websocket.recv()
-            print(f"Authorization response: {response}")
+        if vm_id:
+            await websocket.send("authenticated")
+            print(f"Authenticated with token: {token}")
 
-    async def send_message(self, message: str):
-        if self.websocket:
-            await self.websocket.send(message)
-            response = await self.websocket.recv()
-            print(f"Server response: {response}")
+            while True:
+                message = await websocket.recv()
+                print(f"Received message: {message}")
 
-    async def close(self):
-        if self.websocket:
-            await self.websocket.close()
+        else:
+            await websocket.send("unauthorized")
+            print("Failed to authenticate")
+    except websockets.exceptions.ConnectionClosed:
+        print("Connection closed")
+
+
+async def run_client(host, port):
+    server = await websockets.serve(handle_connection, host, port)
+    async with server:
+        await asyncio.Future()

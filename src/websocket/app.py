@@ -18,23 +18,5 @@ async def websocket_endpoint(websocket: WebSocket, vm_id: str):
         await websocket_server.send_message("A client disconnected")
 
 
-def validate_auth_user():
-    pass
-
-
-@router.websocket.post("/token", response_model=TokenInfo)
-def auth_vm_issue_jwt(
-        vm: VirtualMachine = Depends(validate_auth_user),
-):
-    jwt_payload = {
-        "sub": vm.id,
-        "vm_name": vm.name,
-        "vm_description": vm.description,
-    }
-    token = encode_jwt(jwt_payload)
-    return TokenInfo(
-        access_token=token,
-        token_type="Bearer",
-    )
 
 
