@@ -1,9 +1,8 @@
 import asyncio
 import websockets
-from auth.utils import encode_jwt, decode_jwt
+from src.auth.utils import encode_jwt
 from src.config import settings
-from schemas import VirtualMachineCreate, VirtualMachine, VMDiskCreate, VMDisk, WSConnectionHistoryCreate, \
-    WSConnectionHistory, TokenInfo
+from src.schemas import VirtualMachine, VMDisk, WSConnectionHistoryCreate
 from datetime import datetime
 
 
@@ -20,7 +19,6 @@ class VirtualMachineServer:
                 vm.is_connected = True
                 self.connection_history.append(
                     WSConnectionHistoryCreate(vm_id=vm.vm_id, connected_at=datetime.utcnow()))
-
 
                 await self.request_authorization(websocket, vm)
         except Exception as e:

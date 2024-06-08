@@ -1,6 +1,6 @@
 import asyncio
 import websockets
-from auth.utils import decode_jwt
+from src.auth.utils import decode_jwt
 import jwt
 
 
