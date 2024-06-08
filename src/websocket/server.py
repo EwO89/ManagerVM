@@ -9,17 +9,19 @@ from src.db.dao import virtual_machine_dao, connection_history_dao
 
 class WebsocketServer:
 
-    async def connect_to_client(self, vm: VirtualMachine):
+    @staticmethod
+    async def connect_to_client(vm: VirtualMachine):
         try:
             async with websockets.connect(vm.uri) as websocket:
                 print(f"Connected to {vm.vm_id}")
                 await connection_history_dao.create(vm.vm_id)
 
-                await self.request_authorization(websocket, vm)
+                await WebsocketServer.request_authorization(websocket, vm)
         except Exception as e:
             print(f"Failed to connect to {vm.uri}: {e}")
 
-    async def request_authorization(self, websocket, vm: VirtualMachine):
+    @staticmethod
+    async def request_authorization(websocket, vm: VirtualMachine):
         try:
             token = encode_jwt({"vm_id": vm.vm_id})
             await websocket.send(token)
@@ -28,13 +30,14 @@ class WebsocketServer:
             response = await websocket.recv()
             if response == "authenticated":
                 print(f"Authenticated with {vm.vm_id}")
-                await self.handle_client(websocket, vm)
+                await WebsocketServer.handle_client(websocket, vm)
             else:
                 print(f"Failed to authenticate with {vm.vm_id}")
         except Exception as e:
             print(f"Authorization error with {vm.vm_id}: {e}")
 
-    async def handle_client(self, websocket, vm: VirtualMachine):
+    @staticmethod
+    async def handle_client(websocket, vm: VirtualMachine):
         try:
             while True:
                 message = await websocket.recv()
@@ -44,15 +47,18 @@ class WebsocketServer:
             print(f"Connection closed for {vm.vm_id}")
             await connection_history_dao.close_connection(vm.vm_id)
 
-    async def list_connected_clients(self):
+    @staticmethod
+    async def list_connected_clients():
         vms = await virtual_machine_dao.list_vms()
         return [vm.dict() for vm in vms if vm.is_connected]
 
-    async def list_authorized_clients(self):
+    @staticmethod
+    async def list_authorized_clients():
         vms = await virtual_machine_dao.list_vms()
         return [vm.dict() for vm in vms if vm.is_authenticated]
 
-    async def list_all_disks(self):
+    @staticmethod
+    async def list_all_disks():
         vms = await virtual_machine_dao.list_vms()
         disks = []
         for vm in vms:
@@ -62,15 +68,18 @@ class WebsocketServer:
                 disks.append(disk_info)
         return disks
 
-    async def list_all_connections(self):
+    @staticmethod
+    async def list_all_connections():
         return await connection_history_dao.get_all()
 
-    async def disconnect_client(self, vm_id: int):
+    @staticmethod
+    async def disconnect_client(vm_id: int):
         vm = await virtual_machine_dao.get_vm(vm_id)
         if vm and vm.is_authenticated:
-            await self.close_connection(vm)
+            await WebsocketServer.close_connection(vm)
 
-    async def close_connection(self, vm: VirtualMachine):
+    @staticmethod
+    async def close_connection(vm: VirtualMachine):
         try:
             await vm.websocket.close()
         except Exception as e:
@@ -78,7 +87,8 @@ class WebsocketServer:
         finally:
             await connection_history_dao.close_connection(vm.vm_id)
 
-    async def update_vm(self, vm_id: int, ram: int = None, cpu: int = None, description: str = None):
+    @staticmethod
+    async def update_vm(vm_id: int, ram: int = None, cpu: int = None, description: str = None):
         vm = await virtual_machine_dao.get_vm(vm_id)
         if vm:
             updated_vm = VirtualMachineCreate(
@@ -92,7 +102,8 @@ class WebsocketServer:
             await virtual_machine_dao.update_vm(vm_id, updated_vm)
             print(f"Updated VM {vm_id}: {updated_vm.dict()}")
 
-    async def run(self):
+    @staticmethod
+    async def run():
         vm1 = VirtualMachineCreate(
             name="VM1",
             ram=2048,
@@ -120,4 +131,4 @@ class WebsocketServer:
         vm2_id = await virtual_machine_dao.create_vm(vm2)
 
         vms = [await virtual_machine_dao.get_vm(vm1_id), await virtual_machine_dao.get_vm(vm2_id)]
-        await asyncio.gather(*[self.connect_to_client(vm) for vm in vms if vm is not None])
+        await asyncio.gather(*[WebsocketServer.connect_to_client(vm) for vm in vms if vm is not None])
