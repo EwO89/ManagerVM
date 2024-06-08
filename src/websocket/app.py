@@ -1,9 +1,7 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from src.websocket.server import VirtualMachineServer
+from src.websocket import vm_server
 
 router = APIRouter()
-
-vm_server = VirtualMachineServer()
 
 
 @router.websocket("/ws/{vm_id}")

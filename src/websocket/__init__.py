@@ -1,3 +1,3 @@
 from .server import WebsocketServer
 
-websocket_server = WebsocketServer()
+vm_server = WebsocketServer()
