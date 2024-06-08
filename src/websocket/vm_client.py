@@ -25,7 +25,7 @@ async def handle_connection(websocket, path):
             while True:
                 message = await websocket.recv()
                 print(f"Received message: {message}")
-                # Обработка сообщений от сервера
+
         else:
             await websocket.send("unauthorized")
             print("Failed to authenticate")
