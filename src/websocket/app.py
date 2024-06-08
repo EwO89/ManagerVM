@@ -16,7 +16,3 @@ async def websocket_endpoint(websocket: WebSocket, vm_id: str):
     except WebSocketDisconnect:
         await websocket_server.disconnect(websocket)
         await websocket_server.send_message("A client disconnected")
-
-
-
-
