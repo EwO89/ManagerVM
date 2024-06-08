@@ -10,6 +10,7 @@ from datetime import datetime
 class VirtualMachineServer:
     def __init__(self):
         self.virtual_machines = {}
+        self.connection_history = []
 
     async def connect_to_client(self, vm: VirtualMachine):
         try:
@@ -17,6 +18,8 @@ class VirtualMachineServer:
 
                 print(f"Connected to {vm.vm_id}")
                 vm.is_connected = True
+                self.connection_history.append(
+                    WSConnectionHistoryCreate(vm_id=vm.vm_id, connected_at=datetime.utcnow()))
 
 
                 await self.request_authorization(websocket, vm)
@@ -49,6 +52,7 @@ class VirtualMachineServer:
             print(f"Connection closed for {vm.vm_id}")
             vm.is_connected = False
             vm.is_authenticated = False
+            self.connection_history[-1].disconnected_at = datetime.utcnow()
 
     def list_connected_clients(self):
         return [vm.dict() for vm in self.virtual_machines.values() if vm.is_connected]
@@ -64,6 +68,35 @@ class VirtualMachineServer:
                 disk_info['vm_name'] = vm.name
                 disks.append(disk_info)
         return disks
+
+    def list_all_connections(self):
+        return [history.dict() for history in self.connection_history]
+
+    async def disconnect_client(self, vm_id: int):
+        vm = self.virtual_machines.get(vm_id)
+        if vm and vm.is_authenticated:
+            await self.close_connection(vm)
+
+    async def close_connection(self, vm: VirtualMachine):
+        try:
+            await vm.websocket.close()
+        except Exception as e:
+            print(f"Error closing connection for {vm.vm_id}: {e}")
+        finally:
+            vm.is_connected = False
+            vm.is_authenticated = False
+            self.connection_history[-1].disconnected_at = datetime.utcnow()
+
+    async def update_vm(self, vm_id: int, ram: int = None, cpu: int = None, description: str = None):
+        vm = self.virtual_machines.get(vm_id)
+        if vm:
+            if ram is not None:
+                vm.ram = ram
+            if cpu is not None:
+                vm.cpu = cpu
+            if description is not None:
+                vm.description = description
+            print(f"Updated VM {vm_id}: {vm.dict()}")
 
     async def run(self):
 
@@ -100,8 +133,3 @@ class VirtualMachineServer:
         }
 
         await asyncio.gather(*[self.connect_to_client(vm) for vm in self.virtual_machines.values()])
-
-
-if __name__ == "__main__":
-    server = VirtualMachineServer()
-    asyncio.run(server.run())
