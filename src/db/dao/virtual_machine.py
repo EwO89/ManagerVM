@@ -1,17 +1,19 @@
 import asyncpg
 from typing import List, Optional
 from src.schemas import VirtualMachine, VirtualMachineCreate, VMDisk
+from src.db.dao.base import BaseDAO
 
 
-class VirtualMachineDAO:
+class VirtualMachineDAO(BaseDAO):
     def __init__(self, pool):
-        self.pool = pool
+        self.table_name = "virtual_machine"
+        super().__init__(pool)
 
     async def create_vm(self, vm: VirtualMachineCreate) -> int:
         async with self.pool.acquire() as conn:
             async with conn.transaction():
-                vm_id = await conn.fetchval("""
-                    INSERT INTO virtual_machine (name, ram, cpu, description, uri, created_at)
+                vm_id = await conn.fetchval(f"""
+                    INSERT INTO {self.table_name} (name, ram, cpu, description, uri, created_at)
                     VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING vm_id
                 """, vm.name, vm.ram, vm.cpu, vm.description, vm.uri)
 
@@ -25,8 +27,8 @@ class VirtualMachineDAO:
 
     async def get_vm(self, vm_id: int) -> Optional[VirtualMachine]:
         async with self.pool.acquire() as conn:
-            vm_row = await conn.fetchrow("""
-                SELECT * FROM virtual_machine WHERE vm_id = $1
+            vm_row = await conn.fetchrow(f"""
+                SELECT * FROM {self.table_name} WHERE vm_id = $1
             """, vm_id)
 
             if vm_row is None:
@@ -52,8 +54,8 @@ class VirtualMachineDAO:
     async def update_vm(self, vm_id: int, vm: VirtualMachineCreate):
         async with self.pool.acquire() as conn:
             async with conn.transaction():
-                await conn.execute("""
-                    UPDATE virtual_machine SET name = $1, ram = $2, cpu = $3, description = $4, uri = $5
+                await conn.execute(f"""
+                    UPDATE {self.table_name} SET name = $1, ram = $2, cpu = $3, description = $4, uri = $5
                     WHERE vm_id = $6
                 """, vm.name, vm.ram, vm.cpu, vm.description, vm.uri, vm_id)
 
@@ -68,14 +70,14 @@ class VirtualMachineDAO:
 
     async def delete_vm(self, vm_id: int):
         async with self.pool.acquire() as conn:
-            await conn.execute("""
-                DELETE FROM virtual_machine WHERE vm_id = $1
+            await conn.execute(f"""
+                DELETE FROM {self.table_name} WHERE vm_id = $1
             """, vm_id)
 
     async def list_vms(self) -> List[VirtualMachine]:
         async with self.pool.acquire() as conn:
-            vm_rows = await conn.fetch("""
-                SELECT * FROM virtual_machine
+            vm_rows = await conn.fetch(f"""
+                SELECT * FROM {self.table_name}
             """)
 
             vms = []

@@ -3,17 +3,13 @@ from typing import List, Dict
 
 import asyncpg
 
-from src.config import settings
+from src.db.dao.base import BaseDAO
 
 
-class BaseDao:
-    def __init__(self, pool):
-        self.pool = pool
-
-
-class ConnectionHistoryDao:
-    def __init__(self):
+class ConnectionHistoryDao(BaseDAO):
+    def __init__(self, pool: asyncpg.pool.Pool):
         self.table_name = 'ws_connection_history'
+        super().__init__(pool)
 
     async def create(self, vm_id: int):
         async with self.pool.acquire() as connection:
