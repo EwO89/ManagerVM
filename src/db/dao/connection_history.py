@@ -1,9 +1,8 @@
 from datetime import datetime
-from typing import List, Dict
-
+from typing import List
 import asyncpg
-
 from src.db.dao.base import BaseDAO
+from src.schemas import WSConnectionHistory
 
 
 class ConnectionHistoryDao(BaseDAO):
@@ -18,7 +17,7 @@ class ConnectionHistoryDao(BaseDAO):
                 VALUES ($1, $2)
             ''', vm_id, datetime.utcnow())
 
-    async def get_all_distinct(self) -> List[Dict]:
+    async def get_all_distinct(self) -> List[WSConnectionHistory]:
         async with self.pool.acquire() as connection:
             rows = await connection.fetch(f'''
                 SELECT DISTINCT vm_id, MIN(connected_at) as first_connected_at
@@ -26,16 +25,22 @@ class ConnectionHistoryDao(BaseDAO):
                 GROUP BY vm_id
                 ORDER BY first_connected_at
             ''')
-            return [dict(row) for row in rows]
+            return [WSConnectionHistory(vm_id=row['vm_id'], connected_at=row['first_connected_at']) for row in rows]
 
-    async def get_all(self) -> List[Dict]:
+    async def get_all(self) -> List[WSConnectionHistory]:
         async with self.pool.acquire() as connection:
             rows = await connection.fetch(f'''
-                SELECT vm_id, connected_at
+                SELECT id, vm_id, connected_at, disconnected_at
                 FROM {self.table_name}
                 ORDER BY connected_at
             ''')
-            return [dict(row) for row in rows]
+            return [WSConnectionHistory(id=row['id'], vm_id=row['vm_id'], connected_at=row['connected_at'],
+                                        disconnected_at=row['disconnected_at']) for row in rows]
 
-    async def close_connection(self, vm_id):
-        pass
+    async def close_connection(self, vm_id: int):
+        async with self.pool.acquire() as connection:
+            await connection.execute(f'''
+                UPDATE {self.table_name}
+                SET disconnected_at = $1
+                WHERE vm_id = $2 AND disconnected_at IS NULL
+            ''', datetime.utcnow(), vm_id)

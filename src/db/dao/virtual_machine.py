@@ -27,19 +27,26 @@ class VirtualMachineDAO(BaseDAO):
 
     async def get_vm(self, vm_id: int) -> Optional[VirtualMachine]:
         async with self.pool.acquire() as conn:
-            vm_row = await conn.fetchrow(f"""
-                SELECT * FROM {self.table_name} WHERE vm_id = $1
+            rows = await conn.fetch(f"""
+                SELECT 
+                    vm.*, 
+                    disk.disk_id, 
+                    disk.disk_size
+                FROM 
+                    {self.table_name} AS vm
+                LEFT JOIN 
+                    vm_disk AS disk ON vm.vm_id = disk.vm_id
+                WHERE 
+                    vm.vm_id = $1
             """, vm_id)
 
-            if vm_row is None:
+            if not rows:
                 return None
 
-            disks = await conn.fetch("""
-                SELECT * FROM vm_disk WHERE vm_id = $1
-            """, vm_id)
+            disks = [VMDisk(disk_id=row['disk_id'], vm_id=row['vm_id'], disk_size=row['disk_size']) for row in rows if
+                     row['disk_id'] is not None]
 
-            hard_disks = [VMDisk(**dict(disk)) for disk in disks]
-
+            vm_row = rows[0]
             return VirtualMachine(
                 vm_id=vm_row['vm_id'],
                 name=vm_row['name'],
@@ -48,7 +55,7 @@ class VirtualMachineDAO(BaseDAO):
                 description=vm_row['description'],
                 uri=vm_row['uri'],
                 created_at=vm_row['created_at'],
-                hard_disks=hard_disks
+                hard_disks=disks
             )
 
     async def update_vm(self, vm_id: int, vm: VirtualMachineCreate):
@@ -76,27 +83,39 @@ class VirtualMachineDAO(BaseDAO):
 
     async def list_vms(self) -> List[VirtualMachine]:
         async with self.pool.acquire() as conn:
-            vm_rows = await conn.fetch(f"""
-                SELECT * FROM {self.table_name}
+            rows = await conn.fetch(f"""
+                SELECT 
+                    vm.*, 
+                    disk.disk_id, 
+                    disk.disk_size
+                FROM 
+                    {self.table_name} AS vm
+                LEFT JOIN 
+                    vm_disk AS disk ON vm.vm_id = disk.vm_id
+                ORDER BY 
+                    vm.vm_id
             """)
 
             vms = []
-            for vm_row in vm_rows:
-                disks = await conn.fetch("""
-                    SELECT * FROM vm_disk WHERE vm_id = $1
-                """, vm_row['vm_id'])
-
-                hard_disks = [VMDisk(**dict(disk)) for disk in disks]
-
-                vms.append(VirtualMachine(
-                    vm_id=vm_row['vm_id'],
-                    name=vm_row['name'],
-                    ram=vm_row['ram'],
-                    cpu=vm_row['cpu'],
-                    description=vm_row['description'],
-                    uri=vm_row['uri'],
-                    created_at=vm_row['created_at'],
-                    hard_disks=hard_disks
-                ))
+            current_vm = None
+            for row in rows:
+                if current_vm is None or current_vm.vm_id != row['vm_id']:
+                    if current_vm is not None:
+                        vms.append(current_vm)
+                    current_vm = VirtualMachine(
+                        vm_id=row['vm_id'],
+                        name=row['name'],
+                        ram=row['ram'],
+                        cpu=row['cpu'],
+                        description=row['description'],
+                        uri=row['uri'],
+                        created_at=row['created_at'],
+                        hard_disks=[]
+                    )
+                if row['disk_id'] is not None:
+                    current_vm.hard_disks.append(
+                        VMDisk(disk_id=row['disk_id'], vm_id=row['vm_id'], disk_size=row['disk_size']))
+            if current_vm is not None:
+                vms.append(current_vm)
 
             return vms
