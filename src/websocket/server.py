@@ -2,15 +2,22 @@ import asyncio
 import websockets
 from src.auth.utils import encode_jwt
 from src.config import settings
-from src.schemas import VirtualMachine, VMDiskCreate, WSConnectionHistoryCreate, VirtualMachineCreate
+from src.schemas import VirtualMachine, WSConnectionHistoryCreate, VirtualMachineCreate, VMDiskCreate
 from datetime import datetime
 from src.db.virtual_machine_DAO import VirtualMachineDAO
 
 
 class WebsocketServer:
-    def __init__(self, db_path: str):
-        self.virtual_machine_dao = VirtualMachineDAO(db_path)
+    def __init__(self, dsn: str):
+        self.virtual_machine_dao = VirtualMachineDAO(dsn)
         self.connection_history = []
+
+    async def start(self):
+        await self.virtual_machine_dao.connect()
+        await self.virtual_machine_dao.create_tables()
+
+    async def stop(self):
+        await self.virtual_machine_dao.close()
 
     async def connect_to_client(self, vm: VirtualMachine):
         try:
@@ -71,7 +78,7 @@ class WebsocketServer:
         return [history.dict() for history in self.connection_history]
 
     async def disconnect_client(self, vm_id: int):
-        vm = self.virtual_machine_dao.get_vm(vm_id)
+        vm = await self.virtual_machine_dao.get_vm(vm_id)
         if vm and vm.is_authenticated:
             await self.close_connection(vm)
 
@@ -86,7 +93,7 @@ class WebsocketServer:
             self.connection_history[-1].disconnected_at = datetime.utcnow()
 
     async def update_vm(self, vm_id: int, ram: int = None, cpu: int = None, description: str = None):
-        vm = self.virtual_machine_dao.get_vm(vm_id)
+        vm = await self.virtual_machine_dao.get_vm(vm_id)
         if vm:
             updated_vm = VirtualMachineCreate(
                 name=vm.name,
@@ -96,7 +103,7 @@ class WebsocketServer:
                 uri=vm.uri,
                 hard_disks=[VMDiskCreate(disk_id=disk.disk_id, disk_size=disk.disk_size) for disk in vm.hard_disks]
             )
-            self.virtual_machine_dao.update_vm(vm_id, updated_vm)
+            await self.virtual_machine_dao.update_vm(vm_id, updated_vm)
             print(f"Updated VM {vm_id}: {updated_vm.dict()}")
 
     async def run(self):
@@ -123,8 +130,8 @@ class WebsocketServer:
             ]
         )
 
-        vm1_id = self.virtual_machine_dao.create_vm(vm1)
-        vm2_id = self.virtual_machine_dao.create_vm(vm2)
+        vm1_id = await self.virtual_machine_dao.create_vm(vm1)
+        vm2_id = await self.virtual_machine_dao.create_vm(vm2)
 
-        vms = [self.virtual_machine_dao.get_vm(vm1_id), self.virtual_machine_dao.get_vm(vm2_id)]
+        vms = [await self.virtual_machine_dao.get_vm(vm1_id), await self.virtual_machine_dao.get_vm(vm2_id)]
         await asyncio.gather(*[self.connect_to_client(vm) for vm in vms if vm is not None])
