@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import List, Dict
+
 from src.config import settings
+import asyncpg
 
 
 class ConnectionHistoryDao:

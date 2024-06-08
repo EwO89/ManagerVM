@@ -2,19 +2,19 @@ import asyncio
 import websockets
 from src.auth.utils import encode_jwt
 from src.config import settings
-from src.schemas import VirtualMachine, VMDisk, WSConnectionHistoryCreate
+from src.schemas import VirtualMachine, VMDiskCreate, WSConnectionHistoryCreate, VirtualMachineCreate
 from datetime import datetime
+from src.db.virtual_machine_DAO import VirtualMachineDAO
 
 
 class WebsocketServer:
-    def __init__(self):
-        self.virtual_machines = {}
+    def __init__(self, db_path: str):
+        self.virtual_machine_dao = VirtualMachineDAO(db_path)
         self.connection_history = []
 
     async def connect_to_client(self, vm: VirtualMachine):
         try:
             async with websockets.connect(vm.uri) as websocket:
-
                 print(f"Connected to {vm.vm_id}")
                 vm.is_connected = True
                 self.connection_history.append(
@@ -53,14 +53,14 @@ class WebsocketServer:
             self.connection_history[-1].disconnected_at = datetime.utcnow()
 
     def list_connected_clients(self):
-        return [vm.dict() for vm in self.virtual_machines.values() if vm.is_connected]
+        return [vm.dict() for vm in self.virtual_machine_dao.list_vms() if vm.is_connected]
 
     def list_authorized_clients(self):
-        return [vm.dict() for vm in self.virtual_machines.values() if vm.is_authenticated]
+        return [vm.dict() for vm in self.virtual_machine_dao.list_vms() if vm.is_authenticated]
 
     def list_all_disks(self):
         disks = []
-        for vm in self.virtual_machines.values():
+        for vm in self.virtual_machine_dao.list_vms():
             for disk in vm.hard_disks:
                 disk_info = disk.dict()
                 disk_info['vm_name'] = vm.name
@@ -71,7 +71,7 @@ class WebsocketServer:
         return [history.dict() for history in self.connection_history]
 
     async def disconnect_client(self, vm_id: int):
-        vm = self.virtual_machines.get(vm_id)
+        vm = self.virtual_machine_dao.get_vm(vm_id)
         if vm and vm.is_authenticated:
             await self.close_connection(vm)
 
@@ -86,48 +86,45 @@ class WebsocketServer:
             self.connection_history[-1].disconnected_at = datetime.utcnow()
 
     async def update_vm(self, vm_id: int, ram: int = None, cpu: int = None, description: str = None):
-        vm = self.virtual_machines.get(vm_id)
+        vm = self.virtual_machine_dao.get_vm(vm_id)
         if vm:
-            if ram is not None:
-                vm.ram = ram
-            if cpu is not None:
-                vm.cpu = cpu
-            if description is not None:
-                vm.description = description
-            print(f"Updated VM {vm_id}: {vm.dict()}")
+            updated_vm = VirtualMachineCreate(
+                name=vm.name,
+                ram=ram if ram is not None else vm.ram,
+                cpu=cpu if cpu is not None else vm.cpu,
+                description=description if description is not None else vm.description,
+                uri=vm.uri,
+                hard_disks=[VMDiskCreate(disk_id=disk.disk_id, disk_size=disk.disk_size) for disk in vm.hard_disks]
+            )
+            self.virtual_machine_dao.update_vm(vm_id, updated_vm)
+            print(f"Updated VM {vm_id}: {updated_vm.dict()}")
 
     async def run(self):
-
-        vm1 = VirtualMachine(
-            vm_id=1,
+        vm1 = VirtualMachineCreate(
             name="VM1",
             ram=2048,
             cpu=2,
             description="Test VM 1",
             uri="ws://localhost:8765",
-            created_at=datetime.utcnow(),
             hard_disks=[
-                VMDisk(disk_id=1, vm_id=1, disk_size=500),
-                VMDisk(disk_id=2, vm_id=1, disk_size=1000)
+                VMDiskCreate(disk_id=1, disk_size=500),
+                VMDiskCreate(disk_id=2, disk_size=1000)
             ]
         )
 
-        vm2 = VirtualMachine(
-            vm_id=2,
+        vm2 = VirtualMachineCreate(
             name="VM2",
             ram=4096,
             cpu=4,
             description="Test VM 2",
             uri="ws://localhost:8766",
-            created_at=datetime.utcnow(),
             hard_disks=[
-                VMDisk(disk_id=3, vm_id=2, disk_size=2000)
+                VMDiskCreate(disk_id=3, disk_size=2000)
             ]
         )
 
-        self.virtual_machines = {
-            vm1.vm_id: vm1,
-            vm2.vm_id: vm2
-        }
+        vm1_id = self.virtual_machine_dao.create_vm(vm1)
+        vm2_id = self.virtual_machine_dao.create_vm(vm2)
 
-        await asyncio.gather(*[self.connect_to_client(vm) for vm in self.virtual_machines.values()])
+        vms = [self.virtual_machine_dao.get_vm(vm1_id), self.virtual_machine_dao.get_vm(vm2_id)]
+        await asyncio.gather(*[self.connect_to_client(vm) for vm in vms if vm is not None])
