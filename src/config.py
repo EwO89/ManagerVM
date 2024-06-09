@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     auth_jwt: AuthJWT = AuthJWT()
 
     class Config:
-        env_file = '.env'
+        env_file = BASE_DIR / '.env'
         extra = 'ignore'
 
 
