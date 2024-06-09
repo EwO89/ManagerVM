@@ -1,17 +1,22 @@
-
 from fastapi import FastAPI
 
 from src.config import settings
 from src.websocket.app import router as websocket_router
-
+from src.db.dao import init_daos
 
 app = FastAPI(
     title="ManagerVM",
     version="1.0.0",
     description="Manager VM service",
 )
-app.include_router(websocket_router)
 
+
+@app.on_event("startup")
+async def startup_event():
+    await init_daos()
+
+
+app.include_router(websocket_router)
 
 if __name__ == "main":
     import uvicorn
