@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from src.config import settings
 from src.websocket.app import router as websocket_router
 from src.db.dao import init_daos
+from src.db.main import create_tables
 
 app = FastAPI(
     title="ManagerVM",
@@ -13,6 +14,7 @@ app = FastAPI(
 
 @app.on_event("startup")
 async def startup_event():
+    await create_tables()
     await init_daos()
 
 

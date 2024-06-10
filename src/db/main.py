@@ -7,13 +7,6 @@ async def create_pool():
     return await asyncpg.create_pool(settings.POSTGRES_URL)
 
 
-async def init_db():
-    pool = await create_pool()
-    async with pool.acquire() as connection:
-        result = await connection.fetch("SELECT 'hello' AS greeting;")
-        print(result)
-
-
 async def read_sql_script(file_path: Path):
     with open(file_path, 'r') as file:
         sql_script = file.read()

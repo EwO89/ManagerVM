@@ -3,11 +3,17 @@ from typing import Optional, List
 from datetime import datetime
 
 
+class VMDiskCreate(BaseModel):
+    disk_id: int
+    disk_size: int
+
+
 class VirtualMachineCreate(BaseModel):
     name: str
     ram: int
     cpu: int
     description: Optional[str] = None
+    hard_disks: List[VMDiskCreate] = []
 
 
 class VirtualMachineModel(BaseModel):
@@ -17,14 +23,16 @@ class VirtualMachineModel(BaseModel):
     cpu: int
     description: Optional[str] = None
     created_at: datetime
-
-
-class VMDiskCreate(BaseModel):
-    disk_id: int
-    disk_size: int
+    hard_disks: List[VMDiskModel] = []
 
 
 class VMDiskModel(BaseModel):
+    disk_id: int
+    vm_id: int
+    disk_size: int
+
+
+class VMDisk(BaseModel):
     disk_id: int
     vm: VirtualMachineModel
     disk_size: int
@@ -33,6 +41,14 @@ class VMDiskModel(BaseModel):
 class WSConnectionHistoryCreate(BaseModel):
     vm_id: int
     connected_at: datetime
+
+
+class VirtualMachineUpdate(BaseModel):
+    name: str | None
+    ram: int | None
+    cpu: int | None
+    description: str | None = None
+    hard_disks: list[VMDiskCreate] | None = []
 
 
 class WSConnectionHistory(BaseModel):
