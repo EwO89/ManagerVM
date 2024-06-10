@@ -13,9 +13,9 @@ class VirtualMachineDAO(BaseDAO):
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 vm_id = await conn.fetchval(f"""
-                    INSERT INTO {self.table_name} (name, ram, cpu, description, uri, created_at)
-                    VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING vm_id
-                """, vm.name, vm.ram, vm.cpu, vm.description, vm.uri)
+                    INSERT INTO {self.table_name} (name, ram, cpu, description, created_at)
+                    VALUES ($1, $2, $3, $4, NOW()) RETURNING vm_id
+                """, vm.name, vm.ram, vm.cpu, vm.description)
 
                 for disk in vm.hard_disks:
                     await conn.execute("""
@@ -53,7 +53,6 @@ class VirtualMachineDAO(BaseDAO):
                 ram=vm_row['ram'],
                 cpu=vm_row['cpu'],
                 description=vm_row['description'],
-                uri=vm_row['uri'],
                 created_at=vm_row['created_at'],
                 hard_disks=disks
             )
@@ -62,9 +61,9 @@ class VirtualMachineDAO(BaseDAO):
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 await conn.execute(f"""
-                    UPDATE {self.table_name} SET name = $1, ram = $2, cpu = $3, description = $4, uri = $5
-                    WHERE vm_id = $6
-                """, vm.name, vm.ram, vm.cpu, vm.description, vm.uri, vm_id)
+                    UPDATE {self.table_name} SET name = $1, ram = $2, cpu = $3, description = $4
+                    WHERE vm_id = $5
+                """, vm.name, vm.ram, vm.cpu, vm.description, vm_id)
 
                 await conn.execute("""
                     DELETE FROM vm_disk WHERE vm_id = $1
@@ -108,7 +107,6 @@ class VirtualMachineDAO(BaseDAO):
                         ram=row['ram'],
                         cpu=row['cpu'],
                         description=row['description'],
-                        uri=row['uri'],
                         created_at=row['created_at'],
                         hard_disks=[]
                     )

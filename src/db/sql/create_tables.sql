@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS virtual_machine (
     ram INTEGER NOT NULL,
     cpu INTEGER NOT NULL,
     description TEXT,
-    uri VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
