@@ -66,6 +66,7 @@ class WebsocketServer:
         else:
             self.active_connections[vm.vm_id] = websocket
             self.vm_info[vm.vm_id] = vm
+            await connection_history_dao.create(vm.vm_id)
             await self.authorize(websocket, vm)
 
     async def _handle_success_auth(self, websocket: WebSocket, vm: VirtualMachineCreate):
