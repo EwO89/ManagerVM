@@ -19,7 +19,9 @@ class Client:
         self.websocket = None
 
     async def connect(self):
+        print(f"Connecting to {self.uri}")
         self.websocket = await websockets.connect(self.uri)
+        print('good')
 
     async def close_connection(self):
         if self.websocket is not None:
@@ -105,7 +107,7 @@ async def test_socket():
 
     vm1_id = await virtual_machine_dao.create_vm(vm1)
     vm2_id = await virtual_machine_dao.create_vm(vm2)
-
+    print(f"Created VMs with IDs: {vm1_id}, {vm2_id}")
     await vm_client.connect()
     await vm_client.send_data({"type": "init"})
     await vm_client.run()

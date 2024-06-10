@@ -13,3 +13,5 @@ services:
     volumes:
       - .postgres:/var/lib/postgres/data
     restart: always
+    env_file:
+      - .env.docker
