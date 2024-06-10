@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
@@ -19,7 +19,6 @@ class VirtualMachineCreate(BaseModel):
     ram: int
     cpu: int
     description: Optional[str] = None
-    uri: str
     hard_disks: List[VMDiskCreate] = []
 
 
@@ -29,7 +28,6 @@ class VirtualMachine(BaseModel):
     ram: int
     cpu: int
     description: Optional[str] = None
-    uri: str
     created_at: datetime
     hard_disks: List[VMDisk] = []
 
