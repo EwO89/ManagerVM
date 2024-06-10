@@ -1,8 +1,11 @@
 from fastapi import WebSocket
-
+import asyncpg
 from src.auth.utils import encode_jwt
 from src.config import settings
-from src.db.dao import virtual_machine_dao, connection_history_dao, vm_disk_dao
+from src.db.dao import connection_history_dao
+from src.db.dao.virtual_machine import VirtualMachineDAO
+from src.db.dao.connection_history import ConnectionHistoryDao
+from src.db.dao.vm_disk import VMDiskDAO
 from src.schemas import VirtualMachineCreate, VMDiskCreate, VirtualMachineUpdate
 from src.websocket.exceptions import ServerError, UnknownType
 
@@ -14,17 +17,30 @@ class WebsocketServer:
         self.vm_info = {}
         self.active_connections = {}
         self.authorized_connections = {}
+        self.pool = None
+
+    async def init_pool(self):
+        self.pool = await asyncpg.create_pool(dsn=settings.DATABASE_URL)
 
     async def authorize(self, websocket: WebSocket, vm: VirtualMachineCreate):
         token = encode_jwt({"vm_id": vm.vm_id})
         data = {"type": "auth", "token": token, "public_key": settings.auth_jwt.public_key_path.name}
-        await websocket.send(data)
+        await websocket.send_json(data)
 
     async def _is_authorized(self, vm_id: int):
         return vm_id in self.authorized_connections
 
     async def handle_client(self, websocket: WebSocket, data: dict, vm_id: int):
+        if self.pool is None:
+            await self.init_pool()
+
+        virtual_machine_dao = VirtualMachineDAO(self.pool)
+
         vm = await virtual_machine_dao.get_vm(vm_id)
+        if vm is None:
+            print(f"Virtual machine with vm_id {vm_id} not found")
+            return
+
         print(f"Received message from {vm.vm_id}: {data}")
 
         data_type = data.get("type")
@@ -37,16 +53,16 @@ class WebsocketServer:
         elif data_type == "success_auth":
             await self._handle_success_auth(websocket, vm)
         elif data_type == "data":
-            await self._handle_update(vm_id, data['data'])
+            await self._handle_update(vm.vm_id, data['data'])
         else:
-            await self._handle_error(vm_id, data['error'])
+            await self._handle_error(vm.vm_id, data['error'])
             print(f"Error from {vm.vm_id}: {data['error']}")
             await self.disconnect_client(vm.vm_id)
             raise ServerError(data['error'])
 
     async def _handle_init(self, websocket: WebSocket, vm: VirtualMachineCreate):
         if self._is_authorized(vm.vm_id):
-            print("Already authorized, client can send data")  # maybe raise here
+            print("Already authorized, client can send data")
         else:
             self.active_connections[vm.vm_id] = websocket
             self.vm_info[vm.vm_id] = vm
@@ -66,15 +82,23 @@ class WebsocketServer:
         raise ServerError(error)
 
     async def list_active_connections(self):
-        return [self.vm_info[vm.vm_id] for vm in self.active_connections]
+        return [self.vm_info[vm_id] for vm_id in self.active_connections]
 
     async def list_authorized_connections(self):
-        return [self.vm_info[vm.vm_id] for vm in self.authorized_connections]
+        return [self.vm_info[vm_id] for vm_id in self.authorized_connections]
 
     async def list_all_disks(self):
+        if self.pool is None:
+            await self.init_pool()
+
+        vm_disk_dao = VMDiskDAO(self.pool)
         return await vm_disk_dao.get_all()
 
     async def list_all_connections(self):
+        if self.pool is None:
+            await self.init_pool()
+
+        connection_history_dao = ConnectionHistoryDao(self.pool)
         return await connection_history_dao.get_all_distinct()
 
     async def disconnect_client(self, vm_id: int):
@@ -90,6 +114,10 @@ class WebsocketServer:
                 del self.authorized_connections[vm_id]
 
     async def update_vm(self, vm_id: int, vm_data: VirtualMachineUpdate):
+        if self.pool is None:
+            await self.init_pool()
+
+        virtual_machine_dao = VirtualMachineDAO(self.pool)
         vm = await virtual_machine_dao.get_vm(vm_id)
         if vm:
             updated_vm = VirtualMachineCreate(
@@ -104,4 +132,4 @@ class WebsocketServer:
             print(f"Updated VM {vm_id}: {updated_vm.dict()}")
 
 
-vm_server = WebsocketServer()
+

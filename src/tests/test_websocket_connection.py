@@ -2,7 +2,7 @@ import pytest
 import asyncio
 import websockets
 from fastapi.testclient import TestClient
-from src import app
+from src.main import app
 
 
 @pytest.fixture
@@ -13,7 +13,7 @@ def client():
 
 @pytest.mark.asyncio
 async def test_websocket_connection(client):
-    uri = "ws://localhost:9000/ws"
+    uri = "ws://localhost:8090/ws"
 
     async def websocket_test():
         async with websockets.connect(uri) as websocket:

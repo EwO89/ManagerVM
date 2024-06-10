@@ -1,9 +1,6 @@
-
 from typing import List
-
 from src.db.dao.base import BaseDAO
 from src.schemas import VMDiskModel, VirtualMachineModel
-
 
 class VMDiskDAO(BaseDAO):
     def __init__(self, pool):
@@ -13,7 +10,7 @@ class VMDiskDAO(BaseDAO):
     async def get_all(self) -> List[VMDiskModel]:
         async with self.pool.acquire() as connection:
             rows = await connection.fetch(f'''
-                SELECT disk_id, vm_id, disk_size, vm_id, name, ram, cpu, description, uri, created_at
+                SELECT disk_id, vm_id, disk_size, vm_id, name, ram, cpu, description, created_at
                 FROM {self.table_name}
                 JOIN virtual_machine ON vm_disk.vm_id = virtual_machine.vm_id
             ''')
@@ -26,7 +23,6 @@ class VMDiskDAO(BaseDAO):
                         ram=row['ram'],
                         cpu=row['cpu'],
                         description=row['description'],
-                        uri=row['uri'],
                         created_at=row['created_at']
                     ),
                     disk_size=row['disk_size']

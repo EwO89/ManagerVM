@@ -1,5 +1,5 @@
 start:
-	uvicorn src.main:app --reload --reload-dir src/ --host 0.0.0.0 --port 8090
+	uvicorn src.main:app --reload --reload-dir src/ --host 127.0.0.1 --port 8090
 
 docker-up:
 	docker compose -f docker-compose-services.yaml up -d

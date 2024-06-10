@@ -2,7 +2,7 @@ import pytest
 import asyncio
 from fastapi import FastAPI, WebSocketDisconnect
 from fastapi.testclient import TestClient
-from src.websocket.vm_client import VMClient
+from src.websocket.vm_client import Client
 from src.websocket import websocket_server
 from src.websocket.app import router as websocket_router
 from src.config import settings

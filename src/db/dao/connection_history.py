@@ -4,7 +4,6 @@ import asyncpg
 from src.db.dao.base import BaseDAO
 from src.schemas import WSConnectionHistory
 
-
 class ConnectionHistoryDao(BaseDAO):
     def __init__(self, pool: asyncpg.pool.Pool):
         self.table_name = 'ws_connection_history'
