@@ -1,13 +1,13 @@
 from fastapi import WebSocket
-import asyncpg
 from src.auth.utils import encode_jwt
 from src.config import settings
-from src.db.dao import connection_history_dao
 from src.db.dao.virtual_machine import VirtualMachineDAO
 from src.db.dao.connection_history import ConnectionHistoryDao
 from src.db.dao.vm_disk import VMDiskDAO
+from src.db.main import create_pool
 from src.schemas import VirtualMachineCreate, VMDiskCreate, VirtualMachineUpdate
 from src.websocket.exceptions import ServerError, UnknownType
+from src.db.dao import connection_history_dao
 
 
 class WebsocketServer:
@@ -20,7 +20,7 @@ class WebsocketServer:
         self.pool = None
 
     async def init_pool(self):
-        self.pool = await asyncpg.create_pool(dsn=settings.DATABASE_URL)
+        self.pool = await create_pool()
 
     async def authorize(self, websocket: WebSocket, vm: VirtualMachineCreate):
         token = encode_jwt({"vm_id": vm.vm_id})
@@ -130,6 +130,5 @@ class WebsocketServer:
             )
             await virtual_machine_dao.update_vm(vm_id, updated_vm)
             print(f"Updated VM {vm_id}: {updated_vm.dict()}")
-
 
 
