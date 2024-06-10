@@ -1,21 +1,21 @@
 from src.auth.utils import encode_jwt, decode_jwt
 from src.config import settings
 from src.db.dao import virtual_machine_dao, connection_history_dao
-from src.schemas import VirtualMachine, VirtualMachineCreate, VMDiskCreate
+from src.schemas import VirtualMachineModel, VirtualMachineCreate, VMDiskCreate
 from fastapi import WebSocket
 import jwt
 
 
 class WebsocketServer:
     def __init__(self):
-        self.virtual_machines_info = {}  #
+        self.virtual_machines_info = {}
         self.virtual_machines_active_connections = {}
         self.authorized_clients = {}
 
-    async def request_authorization(self, websocket: WebSocket, vm: VirtualMachine):
+    async def request_authorization(self, websocket: WebSocket, vm: VirtualMachineModel):
         pass
 
-    async def handle_client(self, websocket: WebSocket, vm: VirtualMachine):
+    async def handle_client(self, websocket: WebSocket, vm: VirtualMachineModel):
         pass
 
     async def list_connected_clients(self):

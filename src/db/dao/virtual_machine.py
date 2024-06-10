@@ -1,6 +1,6 @@
 import asyncpg
 from typing import List, Optional
-from src.schemas import VirtualMachine, VirtualMachineCreate, VMDisk
+from src.schemas import VirtualMachineModel, VirtualMachineCreate, VMDiskModel
 from src.db.dao.base import BaseDAO
 
 
@@ -25,7 +25,7 @@ class VirtualMachineDAO(BaseDAO):
 
                 return vm_id
 
-    async def get_vm(self, vm_id: int) -> Optional[VirtualMachine]:
+    async def get_vm(self, vm_id: int) -> Optional[VirtualMachineModel]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(f"""
                 SELECT 
@@ -43,11 +43,12 @@ class VirtualMachineDAO(BaseDAO):
             if not rows:
                 return None
 
-            disks = [VMDisk(disk_id=row['disk_id'], vm_id=row['vm_id'], disk_size=row['disk_size']) for row in rows if
+            disks = [VMDiskModel(disk_id=row['disk_id'], vm_id=row['vm_id'], disk_size=row['disk_size']) for row in rows
+                     if
                      row['disk_id'] is not None]
 
             vm_row = rows[0]
-            return VirtualMachine(
+            return VirtualMachineModel(
                 vm_id=vm_row['vm_id'],
                 name=vm_row['name'],
                 ram=vm_row['ram'],
@@ -80,7 +81,7 @@ class VirtualMachineDAO(BaseDAO):
                 DELETE FROM {self.table_name} WHERE vm_id = $1
             """, vm_id)
 
-    async def list_vms(self) -> List[VirtualMachine]:
+    async def list_vms(self) -> List[VirtualMachineModel]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(f"""
                 SELECT 
@@ -101,7 +102,7 @@ class VirtualMachineDAO(BaseDAO):
                 if current_vm is None or current_vm.vm_id != row['vm_id']:
                     if current_vm is not None:
                         vms.append(current_vm)
-                    current_vm = VirtualMachine(
+                    current_vm = VirtualMachineModel(
                         vm_id=row['vm_id'],
                         name=row['name'],
                         ram=row['ram'],
@@ -112,7 +113,7 @@ class VirtualMachineDAO(BaseDAO):
                     )
                 if row['disk_id'] is not None:
                     current_vm.hard_disks.append(
-                        VMDisk(disk_id=row['disk_id'], vm_id=row['vm_id'], disk_size=row['disk_size']))
+                        VMDiskModel(disk_id=row['disk_id'], vm_id=row['vm_id'], disk_size=row['disk_size']))
             if current_vm is not None:
                 vms.append(current_vm)
 
