@@ -1,31 +1,25 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-
-from src.websocket import vm_server
-from src.db.dao import virtual_machine_dao
+from src.websocket import websocket_server
+from src.websocket.exceptions import Error
 
 router = APIRouter()
 
 
-@router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+@router.websocket("/ws/{vm_id}")
+async def websocket_endpoint(websocket: WebSocket, vm_id: int):
     await websocket.accept()
-    try:
-        vm_id = await websocket.recv()
-        vm = await virtual_machine_dao.get_vm(vm_id)
-        if not vm:
-            await websocket.send_json({"error": "Virtual machine not found"})
+    while True:
+        try:
+            data = await websocket.receive_json()
+            await websocket_server.handle_client(websocket, data, vm_id)
+        except WebSocketDisconnect:
+            websocket_server.disconnect_client(vm_id)
+            break
+        except Error as e:
             await websocket.close()
-            return
-
-        if vm.vm_id not in vm_server.virtual_machines:
-            vm_server.virtual_machines[vm.vm_id] = vm
-
-        if vm in vm_server.authorized_clients:
-            print(f"Client {vm.vm_id} is already authenticated")
-            vm_server.virtual_machines_active_connections.append(vm)
-            await vm_server.handle_client(websocket, vm)
-        else:
-            await vm_server.request_authorization(websocket, vm)
-
-    except WebSocketDisconnect:
-        await vm_server.disconnect_client(vm_id)
+            print(e.error)
+            break
+        except Exception as e:
+            await websocket.close()
+            print(f"WebSocket unexpected error: {e}")
+            break

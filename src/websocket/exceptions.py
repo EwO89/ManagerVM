@@ -11,21 +11,17 @@ class Error(Exception):
         return f"Error code: {self.code}, message: {self.message}"
 
 
+# Server exceptions
+class ServerError(Error):
+    code = 1
+
+
+class UnknownType(Error):
+    code = 2
+    message = "Unknown data type, allowed types: init, success_auth, data, error"
+
+
+# Client exceptions
 class WebSocketNotConnectedError(Error):
     code = 3
     message = "Connect to the websocket first"
-
-
-class InvalidTokenException(Error):
-    code = 1
-    message = "Invalid token"
-
-
-class ExpiredTokenException(Error):
-    code = 2
-    message = "Expired token"
-
-
-class UnexpectedTokenException(Error):
-    code = 3
-    message = "Unknown token error"

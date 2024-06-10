@@ -23,7 +23,6 @@ class VirtualMachineModel(BaseModel):
     cpu: int
     description: Optional[str] = None
     created_at: datetime
-    hard_disks: List[VMDiskModel] = []
 
 
 class VMDiskModel(BaseModel):
@@ -44,9 +43,9 @@ class WSConnectionHistoryCreate(BaseModel):
 
 
 class VirtualMachineUpdate(BaseModel):
-    name: str | None
-    ram: int | None
-    cpu: int | None
+    name: str | None = None
+    ram: int | None = None
+    cpu: int | None = None
     description: str | None = None
     hard_disks: list[VMDiskCreate] | None = []
 

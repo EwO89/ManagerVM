@@ -9,7 +9,7 @@ from src.config import settings
 from src.websocket.exceptions import WebSocketNotConnectedError
 
 
-class VMClient:
+class Client:
     def __init__(self, vm_id: int):
         self.vm_id = vm_id
         self.uri = f"ws://{settings.WS_HOST}:{settings.WS_PORT}/ws/{self.vm_id}"
@@ -60,11 +60,10 @@ class VMClient:
                 break
 
             data_type = data.get("type")
-
             if data_type is None:
-                raise Exception("data type was not provided")
+                continue
 
-            if data["type"] == "auth":
+            if data_type == "auth":
                 is_authorized = await self.authorize(data['token'], data['public_key'])
                 if is_authorized:
                     print("Authorization success")
@@ -75,10 +74,11 @@ class VMClient:
 
 
 async def test_socket():
-    vm_client = VMClient(vm_id=1)
+    vm_client = Client(vm_id=1)
 
     await vm_client.connect()
     await vm_client.send_data({"type": "init"})
     await vm_client.run()
+
 
 asyncio.run(test_socket())
