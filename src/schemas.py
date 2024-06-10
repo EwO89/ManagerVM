@@ -23,7 +23,7 @@ class VirtualMachineModel(BaseModel):
     cpu: int
     description: Optional[str] = None
     created_at: datetime
-
+    # hard_disks: List[VMDiskModel] = []
 
 class VMDiskModel(BaseModel):
     disk_id: int

@@ -14,4 +14,3 @@ async def init_daos():
     virtual_machine_dao = VirtualMachineDAO(pool)
     connection_history_dao = ConnectionHistoryDao(pool)
     vm_disk_dao = VMDiskDAO(pool)
-    print("DAO initialized:", virtual_machine_dao, connection_history_dao, vm_disk_dao)

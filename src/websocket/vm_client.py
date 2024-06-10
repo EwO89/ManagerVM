@@ -1,4 +1,3 @@
-
 import asyncio
 import json
 
@@ -7,6 +6,9 @@ import websockets
 
 from src.auth.utils import decode_jwt
 from src.config import settings
+from src.db.dao import virtual_machine_dao, init_daos, VirtualMachineDAO, ConnectionHistoryDao, VMDiskDAO
+from src.db.main import create_pool
+from src.schemas import VMDiskCreate, VirtualMachineCreate
 from src.websocket.exceptions import WebSocketNotConnectedError
 
 
@@ -54,7 +56,7 @@ class Client:
             except websockets.exceptions.ConnectionClosed:
                 print("Connection closed by the server")
                 break
-
+            print("Received data: ", data)
             if "error" in data:
                 print("Error occured: ", data["error"])
                 await self.close_connection()
@@ -75,7 +77,34 @@ class Client:
 
 
 async def test_socket():
+    pool = await create_pool()
+    virtual_machine_dao = VirtualMachineDAO(pool)
+    connection_history_dao = ConnectionHistoryDao(pool)
+    vm_disk_dao = VMDiskDAO(pool)
     vm_client = Client(vm_id=1)
+    vm1 = VirtualMachineCreate(
+        name="VM1",
+        ram=2048,
+        cpu=2,
+        description="Test VM 1",
+        hard_disks=[
+            VMDiskCreate(disk_id=1, disk_size=500),
+            VMDiskCreate(disk_id=2, disk_size=1000)
+        ]
+    )
+
+    vm2 = VirtualMachineCreate(
+        name="VM2",
+        ram=4096,
+        cpu=4,
+        description="Test VM 2",
+        hard_disks=[
+            VMDiskCreate(disk_id=3, disk_size=2000)
+        ]
+    )
+
+    vm1_id = await virtual_machine_dao.create_vm(vm1)
+    vm2_id = await virtual_machine_dao.create_vm(vm2)
 
     await vm_client.connect()
     await vm_client.send_data({"type": "init"})
