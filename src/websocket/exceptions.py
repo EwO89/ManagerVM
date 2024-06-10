@@ -11,6 +11,11 @@ class Error(Exception):
         return f"Error code: {self.code}, message: {self.message}"
 
 
+class WebSocketNotConnectedError(Error):
+    code = 3
+    message = "Connect to the websocket first"
+
+
 class InvalidTokenException(Error):
     code = 1
     message = "Invalid token"
