@@ -78,6 +78,9 @@ class Client:
                     await self.send_data({"error": "authorization failed"})
 
 
+
+
+
 async def test_socket():
     pool = await create_pool()
     virtual_machine_dao = VirtualMachineDAO(pool)
