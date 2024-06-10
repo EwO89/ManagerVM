@@ -1,6 +1,7 @@
+import jwt
 import websockets
 
-from src.auth.utils import encode_jwt
+from src.auth.utils import encode_jwt, decode_jwt
 from src.config import settings
 from src.db.dao import virtual_machine_dao, connection_history_dao
 from src.schemas import VirtualMachine, VirtualMachineCreate, VMDiskCreate
@@ -9,9 +10,9 @@ from fastapi import WebSocket
 
 class WebsocketServer:
     def __init__(self):
-        self.virtual_machines = {}
-        self.virtual_machines_active_connections = []
-        self.authorized_clients = []
+        self.virtual_machines_info = {}
+        self.virtual_machines_active_connections = {}
+        self.authorized_clients = {}
 
     async def request_authorization(self, websocket, vm: VirtualMachine):
         try:
@@ -35,12 +36,42 @@ class WebsocketServer:
             await websocket.close()
 
     async def handle_client(self, websocket: WebSocket, vm: VirtualMachine):
+        self.virtual_machines_info[websocket] = vm
+        try:
+            while True:
+                message = await websocket.receive_json()
+                print(f"Received message from {vm.vm_id}: {message}")
+                # server -> payload {type:'auth'}. 1)
+                if message["type"] == "init":
+                    await self.request_authorization(websocket, vm)
+                elif message["type"] == "auth":
+                    token = message.get("token")
+                    public_key = settings.auth_jwt.public_key_path.read_text()
+                    try:
+                        payload = decode_jwt(token, public_key)
+                        if 'vm_id' in payload and payload['vm_id'] == vm.vm_id:
+                            print(f"Authenticated with {vm.vm_id}")
+                            self.virtual_machines_active_connections[vm.vm_id] = websocket
+                            self.authorized_clients[vm.vm_id] = websocket
+                            await websocket.send_json({"type": "success_auth"})
+                        else:
+                            await websocket.send_json({"error": "Failed to authenticate"})
+                            await websocket.close()
+                    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+                        await websocket.send_json({"error": "Invalid token"})
+                        await websocket.close()
+                elif message["type"] == "data":
+                    print(f"Data from {vm.vm_id}: {message['data']}")
+                else:
+                    print(f"Unknown message type from {vm.vm_id}: {message['type']}")
+
+    '''async def handle_client(self, websocket: WebSocket, vm: VirtualMachine):
         try:
             while True:
                 message = await websocket.receive_json()
                 print(f"Received message from {vm.vm_id}: {message}")
                 if message["type"] == "init":
-                    pass
+                    await self.request_authorization(websocket, vm)
                 elif message["type"] == "data":
                     pass
                 else:
@@ -48,7 +79,7 @@ class WebsocketServer:
         except websockets.exceptions.ConnectionClosed:
             print(f"Connection closed for {vm.vm_id}")
             await connection_history_dao.close_connection(vm.vm_id)
-            self.virtual_machines_active_connections.remove(vm)
+            self.virtual_machines_active_connections.remove(vm)'''
 
     async def list_connected_clients(self):
         vms = await virtual_machine_dao.list_vms()
@@ -99,3 +130,18 @@ class WebsocketServer:
 
 
 vm_server = WebsocketServer()
+
+
+async def close_connection(self, websocket: WebSocket, vm_id: int):
+    try:
+        await websocket.close()
+    except Exception as e:
+        print(f"Error closing connection for {vm_id}: {e}")
+    finally:
+        await connection_history_dao.close_connection(vm_id)
+        if websocket in self.virtual_machines_info:
+            del self.virtual_machines_info[websocket]
+        if vm_id in self.virtual_machines_active_connections:
+            del self.virtual_machines_active_connections[vm_id]
+        if vm_id in self.authorized_clients:
+            del self.authorized_clients[vm_id]
