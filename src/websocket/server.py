@@ -40,7 +40,7 @@ class WebsocketServer:
             print(f"Virtual machine with vm_id {vm_id} not found")
             return
 
-        print(f"Received message from {vm.vm_id}: {data}")
+
 
         data_type = data.get("type")
         if data_type not in self.data_types:

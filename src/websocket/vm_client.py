@@ -1,16 +1,12 @@
 import asyncio
 import json
-
-import jwt
 import websockets
-
 from src.auth.utils import decode_jwt
 from src.config import settings
 from src.db.dao import virtual_machine_dao, init_daos, VirtualMachineDAO, ConnectionHistoryDao, VMDiskDAO
 from src.db.main import create_pool
 from src.schemas import VMDiskCreate, VirtualMachineCreate
 from src.websocket.exceptions import WebSocketNotConnectedError
-from src.websocket import websocket_server
 
 
 class Client:
@@ -20,9 +16,7 @@ class Client:
         self.websocket = None
 
     async def connect(self):
-        print(f"Connecting to {self.uri}")
         self.websocket = await websockets.connect(self.uri)
-        print('good')
 
     async def close_connection(self):
         if self.websocket is not None:
@@ -41,12 +35,8 @@ class Client:
         await self.websocket.send(json.dumps(data))
 
     async def authorize(self, token, public_key) -> bool:
-        print('real?')
-        print(public_key)
         try:
             payload = decode_jwt(token, public_key)
-            print(payload)
-            print(self.vm_id)
             if 'vm_id' in payload and payload['vm_id'] == self.vm_id:
                 return True
             else:
@@ -59,16 +49,12 @@ class Client:
     async def run(self):
         while True:
             try:
-                print('??????ЮЮ')
                 data = await self.receive_json()
                 data['public_key'] = settings.auth_jwt.public_key_path.read_text()
             except websockets.exceptions.ConnectionClosed:
-                print("Connection closed by the server")
                 break
-            print("Received data: ", data)
-            print('seriosli?')
+
             if "error" in data:
-                print("Error occured: ", data["error"])
                 await self.close_connection()
                 break
 
@@ -79,20 +65,9 @@ class Client:
             if data_type == "auth":
                 is_authorized = await self.authorize(data['token'], data['public_key'])
                 if is_authorized:
-                    print("Authorization success")
                     await self.send_data({"type": "success_auth"})
-                    active_con = await websocket_server.list_active_connections()
-                    active_auth = await websocket_server.list_authorized_connections()
-                    print(f"Active connections: {active_con}")
-                    print(f"Authorized connections: {active_auth}")
                 else:
-                    print("Authorization failed")
                     await self.send_data({"error": "authorization failed"})
-            all_machine = websocket_server.authorized_connections
-            print('good (all_methods)')
-            print(all_machine)
-            data = await websocket_server.authorized_connections
-            return data
 
 
 async def test_socket():
@@ -124,7 +99,6 @@ async def test_socket():
 
     vm1_id = await virtual_machine_dao.create_vm(vm1)
     vm2_id = await virtual_machine_dao.create_vm(vm2)
-    print(f"Created VMs with IDs: {vm1_id}, {vm2_id}")
 
     vm_client1 = Client(vm_id=vm1_id)
     vm_client2 = Client(vm_id=vm2_id)
@@ -141,6 +115,3 @@ async def test_socket():
 
 
 asyncio.run(test_socket())
-
-
-
