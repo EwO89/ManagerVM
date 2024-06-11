@@ -18,3 +18,7 @@
 
 ***Тесты***:
 - `make test` - запуск тестов
+
+***Видео***:
+- ссылка > https://drive.google.com/drive/folders/1HHghmescC3qAKLqk0IZyGvwt2OIct6oN?usp=drive_link
+
