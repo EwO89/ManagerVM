@@ -2,7 +2,7 @@ import pytest
 import asyncio
 from fastapi import FastAPI, WebSocketDisconnect
 from fastapi.testclient import TestClient
-from src.websocket.vm_client import VMClient
+from src.websocket.vm_client import Client
 from src.websocket import websocket_server
 from src.websocket.app import router as websocket_router
 from src.config import settings
@@ -37,7 +37,7 @@ async def test_vm_client(client):
 
     server_task = asyncio.create_task(run_server())
 
-    vm_client = VMClient(server_uri, "vm123")
+    vm_client = Client(123)
 
     await vm_client.connect()
     await vm_client.send_message("Hello from VMClient")
