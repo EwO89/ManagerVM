@@ -1,6 +1,7 @@
-from pydantic import BaseModel
-from typing import Optional, List
 from datetime import datetime
+from typing import Optional, List
+
+from pydantic import BaseModel
 
 
 class VMDiskCreate(BaseModel):
@@ -16,6 +17,12 @@ class VirtualMachineCreate(BaseModel):
     hard_disks: List[VMDiskCreate] = []
 
 
+class VMDiskModel(BaseModel):
+    disk_id: int
+    vm_id: int
+    disk_size: int
+
+
 class VirtualMachineModel(BaseModel):
     vm_id: int
     name: str
@@ -23,12 +30,16 @@ class VirtualMachineModel(BaseModel):
     cpu: int
     description: Optional[str] = None
     created_at: datetime
-    # hard_disks: List[VMDiskModel] = []
+    hard_disks: List[VMDiskModel] = []
 
-class VMDiskModel(BaseModel):
-    disk_id: int
+
+class VirtualMachineDiskModel(BaseModel):
     vm_id: int
-    disk_size: int
+    name: str
+    ram: int
+    cpu: int
+    description: Optional[str] = None
+    created_at: datetime
 
 
 class VMDisk(BaseModel):
@@ -57,6 +68,4 @@ class WSConnectionHistory(BaseModel):
     disconnected_at: Optional[datetime] = None
 
 
-class TokenInfo(BaseModel):
-    access_token: str
-    token_type: str
+

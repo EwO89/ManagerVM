@@ -5,7 +5,7 @@ from src.db.dao.virtual_machine import VirtualMachineDAO
 from src.db.dao.connection_history import ConnectionHistoryDao
 from src.db.dao.vm_disk import VMDiskDAO
 from src.db.main import create_pool
-from src.schemas import VirtualMachineCreate, VMDiskCreate, VirtualMachineUpdate
+from src.schemas import VirtualMachineCreate, VMDiskCreate, VirtualMachineUpdate, VirtualMachineModel
 from src.websocket.exceptions import ServerError, UnknownType
 from src.db.dao import connection_history_dao
 
@@ -23,20 +23,26 @@ class WebsocketServer:
         self.pool = await create_pool()
 
     async def authorize(self, websocket: WebSocket, vm: VirtualMachineCreate):
+        print('good???')
         token = encode_jwt({"vm_id": vm.vm_id})
-        data = {"type": "auth", "token": token, "public_key": settings.auth_jwt.public_key_path.name}
+        print('tut?')
+        print(settings.auth_jwt.public_key_path.read_text())
+        data = {"type": "auth", "token": token, "public_key": settings.auth_jwt.public_key_path.read_text()}
         await websocket.send_json(data)
 
-    async def _is_authorized(self, vm_id: int):
+    def _is_authorized(self, vm_id: int):
         return vm_id in self.authorized_connections
 
     async def handle_client(self, websocket: WebSocket, data: dict, vm_id: int):
+
         if self.pool is None:
             await self.init_pool()
 
         virtual_machine_dao = VirtualMachineDAO(self.pool)
 
         vm = await virtual_machine_dao.get_vm(vm_id)
+        print(vm)
+        print('No? Really')
         if vm is None:
             print(f"Virtual machine with vm_id {vm_id} not found")
             return
@@ -47,7 +53,7 @@ class WebsocketServer:
 
         if data_type not in self.data_types:
             raise UnknownType
-
+        print('year')
         if data_type == "init":
             await self._handle_init(websocket, vm)
         elif data_type == "success_auth":
@@ -60,12 +66,14 @@ class WebsocketServer:
             await self.disconnect_client(vm.vm_id)
             raise ServerError(data['error'])
 
-    async def _handle_init(self, websocket: WebSocket, vm: VirtualMachineCreate):
+    async def _handle_init(self, websocket: WebSocket, vm: VirtualMachineModel):
         if self._is_authorized(vm.vm_id):
             print("Already authorized, client can send data")
         else:
             self.active_connections[vm.vm_id] = websocket
+            print('qq')
             self.vm_info[vm.vm_id] = vm
+            print('good??')
             await self.authorize(websocket, vm)
 
     async def _handle_success_auth(self, websocket: WebSocket, vm: VirtualMachineCreate):
@@ -130,5 +138,3 @@ class WebsocketServer:
             )
             await virtual_machine_dao.update_vm(vm_id, updated_vm)
             print(f"Updated VM {vm_id}: {updated_vm.dict()}")
-
-

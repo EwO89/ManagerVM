@@ -10,6 +10,7 @@ from src.db.dao import virtual_machine_dao, init_daos, VirtualMachineDAO, Connec
 from src.db.main import create_pool
 from src.schemas import VMDiskCreate, VirtualMachineCreate
 from src.websocket.exceptions import WebSocketNotConnectedError
+from src.websocket import websocket_server
 
 
 class Client:
@@ -21,6 +22,7 @@ class Client:
     async def connect(self):
         print(f"Connecting to {self.uri}")
         self.websocket = await websockets.connect(self.uri)
+
         print('good')
 
     async def close_connection(self):
@@ -31,7 +33,10 @@ class Client:
     async def receive_json(self) -> dict:
         if self.websocket is None:
             raise WebSocketNotConnectedError
+        print(f"{self.websocket}")
         data = await self.websocket.recv()
+        print(data)
+        print('kek')
         return json.loads(data)
 
     async def send_data(self, data):
@@ -40,9 +45,13 @@ class Client:
         await self.websocket.send(json.dumps(data))
 
     async def authorize(self, token, public_key) -> bool:
+        print('real?')
+        print(public_key)
         try:
             payload = decode_jwt(token, public_key)
-            if 'id' in payload and payload['id'] == self.vm_id:
+            print(payload)
+            print(self.vm_id)
+            if 'vm_id' in payload and payload['vm_id'] == self.vm_id:
                 return True
             else:
                 return False
@@ -54,11 +63,14 @@ class Client:
     async def run(self):
         while True:
             try:
+                print('??????ЮЮ')
                 data = await self.receive_json()
+                data['public_key'] = settings.auth_jwt.public_key_path.read_text()
             except websockets.exceptions.ConnectionClosed:
                 print("Connection closed by the server")
                 break
             print("Received data: ", data)
+            print('seriosli?')
             if "error" in data:
                 print("Error occured: ", data["error"])
                 await self.close_connection()
@@ -76,9 +88,8 @@ class Client:
                 else:
                     print("Authorization failed")
                     await self.send_data({"error": "authorization failed"})
-
-
-
+            data = await websocket_server.authorized_connections
+            return data
 
 
 async def test_socket():

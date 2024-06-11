@@ -4,6 +4,7 @@ from src.websocket.exceptions import Error
 
 router = APIRouter()
 
+
 @router.websocket("/ws/{vm_id}")
 async def websocket_endpoint(websocket: WebSocket, vm_id: int):
     await websocket.accept()

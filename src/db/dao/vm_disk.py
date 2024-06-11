@@ -1,6 +1,7 @@
 from typing import List
 from src.db.dao.base import BaseDAO
-from src.schemas import VMDiskModel, VirtualMachineModel
+from src.schemas import VMDiskModel, VirtualMachineModel, VirtualMachineDiskModel
+
 
 class VMDiskDAO(BaseDAO):
     def __init__(self, pool):
@@ -17,7 +18,7 @@ class VMDiskDAO(BaseDAO):
             return [
                 VMDiskModel(
                     disk_id=row['disk_id'],
-                    vm=VirtualMachineModel(
+                    vm=VirtualMachineDiskModel(
                         vm_id=row['vm_id'],
                         name=row['name'],
                         ram=row['ram'],
