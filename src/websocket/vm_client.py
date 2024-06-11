@@ -22,7 +22,6 @@ class Client:
     async def connect(self):
         print(f"Connecting to {self.uri}")
         self.websocket = await websockets.connect(self.uri)
-
         print('good')
 
     async def close_connection(self):
@@ -33,10 +32,7 @@ class Client:
     async def receive_json(self) -> dict:
         if self.websocket is None:
             raise WebSocketNotConnectedError
-        print(f"{self.websocket}")
         data = await self.websocket.recv()
-        print(data)
-        print('kek')
         return json.loads(data)
 
     async def send_data(self, data):
@@ -85,9 +81,16 @@ class Client:
                 if is_authorized:
                     print("Authorization success")
                     await self.send_data({"type": "success_auth"})
+                    active_con = await websocket_server.list_active_connections()
+                    active_auth = await websocket_server.list_authorized_connections()
+                    print(f"Active connections: {active_con}")
+                    print(f"Authorized connections: {active_auth}")
                 else:
                     print("Authorization failed")
                     await self.send_data({"error": "authorization failed"})
+            all_machine = websocket_server.authorized_connections
+            print('good (all_methods)')
+            print(all_machine)
             data = await websocket_server.authorized_connections
             return data
 
@@ -97,7 +100,7 @@ async def test_socket():
     virtual_machine_dao = VirtualMachineDAO(pool)
     connection_history_dao = ConnectionHistoryDao(pool)
     vm_disk_dao = VMDiskDAO(pool)
-    vm_client = Client(vm_id=1)
+
     vm1 = VirtualMachineCreate(
         name="VM1",
         ram=2048,
@@ -122,9 +125,22 @@ async def test_socket():
     vm1_id = await virtual_machine_dao.create_vm(vm1)
     vm2_id = await virtual_machine_dao.create_vm(vm2)
     print(f"Created VMs with IDs: {vm1_id}, {vm2_id}")
-    await vm_client.connect()
-    await vm_client.send_data({"type": "init"})
-    await vm_client.run()
+
+    vm_client1 = Client(vm_id=vm1_id)
+    vm_client2 = Client(vm_id=vm2_id)
+
+    async def run_client(client):
+        await client.connect()
+        await client.send_data({"type": "init"})
+        await client.run()
+
+    await asyncio.gather(
+        run_client(vm_client1),
+        run_client(vm_client2)
+    )
 
 
 asyncio.run(test_socket())
+
+
+

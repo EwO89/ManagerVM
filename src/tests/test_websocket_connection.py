@@ -13,7 +13,7 @@ def client():
 
 @pytest.mark.asyncio
 async def test_websocket_connection(client):
-    uri = "ws://localhost:8090/ws"
+    uri = "ws://localhost:8091/ws"
 
     async def websocket_test():
         async with websockets.connect(uri) as websocket:

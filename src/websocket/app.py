@@ -14,6 +14,8 @@ async def websocket_endpoint(websocket: WebSocket, vm_id: int):
             data = await websocket.receive_json()
             print(f"Received data: {data}")
             await websocket_server.handle_client(websocket, data, vm_id)
+            await websocket_server.list_active_connections()
+            await websocket_server.list_authorized_connections()
         except WebSocketDisconnect:
             await websocket_server.disconnect_client(vm_id)
             break

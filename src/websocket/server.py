@@ -23,10 +23,7 @@ class WebsocketServer:
         self.pool = await create_pool()
 
     async def authorize(self, websocket: WebSocket, vm: VirtualMachineCreate):
-        print('good???')
         token = encode_jwt({"vm_id": vm.vm_id})
-        print('tut?')
-        print(settings.auth_jwt.public_key_path.read_text())
         data = {"type": "auth", "token": token, "public_key": settings.auth_jwt.public_key_path.read_text()}
         await websocket.send_json(data)
 
@@ -34,15 +31,11 @@ class WebsocketServer:
         return vm_id in self.authorized_connections
 
     async def handle_client(self, websocket: WebSocket, data: dict, vm_id: int):
-
         if self.pool is None:
             await self.init_pool()
 
         virtual_machine_dao = VirtualMachineDAO(self.pool)
-
         vm = await virtual_machine_dao.get_vm(vm_id)
-        print(vm)
-        print('No? Really')
         if vm is None:
             print(f"Virtual machine with vm_id {vm_id} not found")
             return
@@ -50,10 +43,9 @@ class WebsocketServer:
         print(f"Received message from {vm.vm_id}: {data}")
 
         data_type = data.get("type")
-
         if data_type not in self.data_types:
             raise UnknownType
-        print('year')
+
         if data_type == "init":
             await self._handle_init(websocket, vm)
         elif data_type == "success_auth":
@@ -62,7 +54,6 @@ class WebsocketServer:
             await self._handle_update(vm.vm_id, data['data'])
         else:
             await self._handle_error(vm.vm_id, data['error'])
-            print(f"Error from {vm.vm_id}: {data['error']}")
             await self.disconnect_client(vm.vm_id)
             raise ServerError(data['error'])
 
@@ -71,43 +62,14 @@ class WebsocketServer:
             print("Already authorized, client can send data")
         else:
             self.active_connections[vm.vm_id] = websocket
-            print('qq')
             self.vm_info[vm.vm_id] = vm
-            print('good??')
             await self.authorize(websocket, vm)
+        await self.list_active_connections()
 
     async def _handle_success_auth(self, websocket: WebSocket, vm: VirtualMachineCreate):
         self.authorized_connections[vm.vm_id] = websocket
         print(f"Authorized {vm.vm_id}")
-
-    async def _handle_update(self, vm_id: int, data: dict):
-        update_data = VirtualMachineUpdate(**data)
-        await self.update_vm(vm_id, update_data)
-
-    async def _handle_error(self, vm_id: int, error: str):
-        print(f"Error from {vm_id}: {error}")
-        await self.disconnect_client(vm_id)
-        raise ServerError(error)
-
-    async def list_active_connections(self):
-        return [self.vm_info[vm_id] for vm_id in self.active_connections]
-
-    async def list_authorized_connections(self):
-        return [self.vm_info[vm_id] for vm_id in self.authorized_connections]
-
-    async def list_all_disks(self):
-        if self.pool is None:
-            await self.init_pool()
-
-        vm_disk_dao = VMDiskDAO(self.pool)
-        return await vm_disk_dao.get_all()
-
-    async def list_all_connections(self):
-        if self.pool is None:
-            await self.init_pool()
-
-        connection_history_dao = ConnectionHistoryDao(self.pool)
-        return await connection_history_dao.get_all_distinct()
+        await self.list_authorized_connections()
 
     async def disconnect_client(self, vm_id: int):
         if vm_id in self.active_connections:
@@ -120,6 +82,28 @@ class WebsocketServer:
                 del self.active_connections[vm_id]
             if vm_id in self.authorized_connections:
                 del self.authorized_connections[vm_id]
+            await self.list_active_connections()
+            await self.list_authorized_connections()
+            await self.list_all_connections()
+
+    async def list_active_connections(self):
+        active_connections = [self.vm_info[vm_id] for vm_id in self.active_connections]
+        print(f"Active connections: {active_connections}")
+        return active_connections
+
+    async def list_authorized_connections(self):
+        authorized_connections = [self.vm_info[vm_id] for vm_id in self.authorized_connections]
+        print(f"Authorized connections: {authorized_connections}")
+        return authorized_connections
+
+    async def list_all_connections(self):
+        if self.pool is None:
+            await self.init_pool()
+
+        connection_history_dao = ConnectionHistoryDao(self.pool)
+        all_connections = await connection_history_dao.get_all_distinct()
+        print(f"All connections: {all_connections}")
+        return all_connections
 
     async def update_vm(self, vm_id: int, vm_data: VirtualMachineUpdate):
         if self.pool is None:
