@@ -21,4 +21,6 @@
 
 ***Видео***:
 - ссылка > https://drive.google.com/drive/folders/1HHghmescC3qAKLqk0IZyGvwt2OIct6oN?usp=drive_link
-
+  
+***ТЗ***:
+ - ссылка на ТЗ > https://docs.google.com/document/d/1lNCpFL3w_8O_iOvRhlAbkwyO8WnrNPfj/edit?usp=drive_link&ouid=106308963898479999770&rtpof=true&sd=true
